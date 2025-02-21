@@ -1,113 +1,75 @@
+// Copyright (c) FIRST and other WPILib contributors.
+// Open Source Software; you can modify and/or share it under the terms of
+// the WPILib BSD license file in the root directory of this project.
+
 package frc.robot;
 
-import frc.robot.commands.Arm.DownArm;
-import frc.robot.commands.Arm.UpArm;
-import frc.robot.commands.ComboMovementAndApriltag.HopeThisWorks;
-import frc.robot.commands.DrivingCommands.DriveForwardTimed;
-import frc.robot.commands.DrivingCommands.ForwardAndTurn;
-import frc.robot.commands.DrivingCommands.ShortDrive;
-import frc.robot.commands.DrivingCommands.TurningTime;
-import frc.robot.commands.MainCommand.ArcadeDriveCMD;
-import frc.robot.commands.TuringViewing.IdentifyYourselfApriltag;
-import frc.robot.commands.TuringViewing.blank;
-import frc.robot.Constants.DriveConstants;
-import frc.robot.Constants.OIConstants;
-import frc.robot.subsystems.DriveSubsystem;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.Newton;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.RotationsPerSecond;
+
+import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
+import com.ctre.phoenix6.swerve.SwerveRequest;
+
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.PS5Controller;
-import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
-import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
-import edu.wpi.first.wpilibj2.command.WaitCommand;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
-import edu.wpi.first.wpilibj2.command.button.POVButton;
-import edu.wpi.first.wpilibj.shuffleboard.*;
-import edu.wpi.first.networktables.*;
-import frc.robot.subsystems.Arm.Arm;
+import frc.robot.Telemetry;
+import frc.robot.commands.Arm.DownArm;
+import frc.robot.commands.Arm.UpArm;
+import frc.robot.subsystems.Arm;
+import frc.robot.subsystems.Swerve;
 
 public class RobotContainer {
-    /*Controllers */
-  private final XboxController joystick1 = new XboxController(OIConstants.kDriverJoystickPort);
-  private final PS5Controller joystick2 = new PS5Controller(OIConstants.kDriverJoystickPort); //Constant Added :)
-  private final Joystick leOperator = new Joystick(OIConstants.kOperatorController);
-/*Subsystem */
-private final DriveSubsystem driveSubsystem = new DriveSubsystem();
-private final Arm m_arm = new Arm();
+    // Setting up max speeds for driving and turning
+    private double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
+    private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond);
 
+    // Controllers
+    private final PS5Controller m_driver = new PS5Controller(Constants.OIConstants.kDriverPort);
+    private final Joystick m_operator = new Joystick(Constants.OIConstants.kOperatorPort);
 
+    // Subsystems
+    public final Swerve m_swerve = TunerConstants.createDrivetrain();
+    public final Telemetry logger = new Telemetry(MaxSpeed);
+    public final Arm m_arm = new Arm(); 
 
+    /* Setting up bindings for necessary control of the swerve drive platform */
+    private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
+            .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(MaxAngularRate * 0.1) // Add a 10% deadband
+            .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // Use open-loop control for drive motors
+    private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
 
-  private final ShuffleboardTab m_tab = Shuffleboard.getTab("Main");
-  //private NetworkTable m_TV = 
-  
-  
-  
-  //Attempting to add buttons...
-  /**
-   * Holds Robots
-   */
   public RobotContainer() {
     configureButtonBindings();
+    configureSwerveBindings();
 
-    m_Chooser.setDefaultOption("Forward and Turning Command", m_MovingForwardandTurningCommand);
-    m_Chooser.addOption("Short Driving Command", m_ShortDrivingCommand);
-    SmartDashboard.putData(m_Chooser);
-
-    driveSubsystem.setDefaultCommand(new ArcadeDriveCMD(driveSubsystem, () -> joystick1.getLeftY(), () -> joystick1.getLeftX()));  //Replace joystick_ with joystick1 for Xbox Controllers, as for PS5, use joystick2 instead.
-
-    //driveSubsystem.setDefaultCommand(new ArcadeDriveCMD(driveSubsystem, () -> joystick2.getLeftY(), () -> joystick2.getLeftX(), () -> Limelight.getRotationalRate()));
+    m_swerve.registerTelemetry(logger::telemeterize);
   }
 
-  /**
-   * Configures Buttons
-   */
   private void configureButtonBindings() {
-    new POVButton(joystick2, 90).whileTrue(new DownArm(m_arm));
-    new POVButton(joystick2, 270).whileTrue(new UpArm(m_arm));
-    //new JoystickButton(joystick1, XboxController.Button.kA.value).onTrue(new DriveForwardTimed(driveSubsystem, 2));
-    new JoystickButton(joystick2, PS5Controller.Button.kCross.value).onTrue(new DriveForwardTimed(driveSubsystem, 1)); //X Button
-    new JoystickButton(joystick2, PS5Controller.Button.kCircle.value).onTrue(new TurningTime(driveSubsystem, 5)); // O Button
-    new JoystickButton(joystick2, PS5Controller.Button.kSquare.value).onTrue(new blank(1));
-    new JoystickButton(joystick1, XboxController.Button.kA.value).onTrue(new DriveForwardTimed(driveSubsystem, 1)); //Compatability thingy
-    new JoystickButton(joystick1, XboxController.Button.kB.value).onTrue(new TurningTime(driveSubsystem, 5));
-    new JoystickButton(joystick1, XboxController.Button.kX.value).onTrue(new blank(1));
-
-    // Operating Buttons on the Button Board
-
-    new JoystickButton(leOperator, 1).onTrue(new IdentifyYourselfApriltag());
-    new JoystickButton(leOperator, 2).onTrue(new HopeThisWorks(driveSubsystem));
-    new JoystickButton(leOperator, 5).onTrue(new ForwardAndTurn(driveSubsystem));
-    
-  } 
-
-
-  /**
-   * Gets autonomous Commands
-   * @return
-   */
-  public Command getAutonomousCommand() {
-    return m_Chooser.getSelected();
+    // In case this doesn't work, please e-stop
+    new JoystickButton(m_operator, 1).whileTrue(new UpArm(m_arm));
+    new JoystickButton(m_operator, 2).whileTrue(new DownArm(m_arm));
   }
 
-  private final Command m_MovingForwardandTurningCommand = new ForwardAndTurn(driveSubsystem);
-  private final Command m_ShortDrivingCommand = new ShortDrive(driveSubsystem);
-  
-  private final SendableChooser<Command> m_Chooser = new SendableChooser<>();
-  
-  
+  private void configureSwerveBindings() {
+    m_swerve.setDefaultCommand(
+      m_swerve.applyRequest(() ->
+        drive.withVelocityX(m_driver.getLeftY() * MaxSpeed)
+             .withVelocityY(m_driver.getLeftX() * MaxSpeed)
+             .withRotationalRate(-m_driver.getRightX() * MaxAngularRate)
+      )
+    );
+
+    new JoystickButton(m_driver, PS5Controller.Button.kOptions.value).onTrue(m_swerve.runOnce(() -> m_swerve.seedFieldCentric()));
+    new JoystickButton(m_driver, PS5Controller.Button.kR3.value).whileTrue(m_swerve.applyRequest(() -> brake));
+  }
+
+  public Command getAutonomousCommand() {
+    return Commands.print("No autonomous command configured");
+  }
 }
-  // A simple auto routine that drives forward a specified distance, and then stops.
-  
-  
-  /*private final Command m_simpleAuto =
-      new DriveDistance(
-          AutoConstants.kAutoDriveDistanceInches, AutoConstants.kAutoDriveSpeed, m_robotDrive);
-
-  // A complex auto routine that drives forward, drops a hatch, and then drives backward.
-  private final Command m_complexAuto = new ComplexAuto(m_robotDrive, m_hatchSubsystem);
-
-  // A chooser for autonomous commands
-  SendableChooser<Command> m_chooser = new SendableChooser<>(); **/

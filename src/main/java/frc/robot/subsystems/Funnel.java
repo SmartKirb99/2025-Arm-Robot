@@ -6,9 +6,9 @@ package frc.robot.subsystems;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-public class BlankSubsystemForHelpWithLimelight extends SubsystemBase {
-  /** Creates a new BlankSubsystemForHelpWithLimelight. */
-  public BlankSubsystemForHelpWithLimelight() {}
+public class Funnel extends SubsystemBase {
+  /** Creates a new Funnel. */
+  public Funnel() {}
 
   @Override
   public void periodic() {

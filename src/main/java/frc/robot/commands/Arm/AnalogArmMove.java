@@ -7,50 +7,42 @@ package frc.robot.commands.Arm;
 import java.util.function.DoubleSupplier;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.Arm.Arm;
+import frc.robot.subsystems.Arm;
 
 /* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
-public class AnalongArmMove extends Command {
-  private final Arm m_Arm;
+public class AnalogArmMove extends Command {
+  private final Arm m_arm;
   private DoubleSupplier m_upSpeed;
   private DoubleSupplier m_downSpeed;
-  /** Creates a new AnalongArmMove. */
-  public AnalongArmMove(DoubleSupplier downSpeed, DoubleSupplier upSpeed, Arm arm) {
-    // Use addRequirements() here to declare subsystem dependencies.
-    m_Arm = arm;
+  /** Creates a new AnalogArmMove. */
+  public AnalogArmMove(DoubleSupplier downSpeed, DoubleSupplier upSpeed, Arm arm) {
+    m_arm = arm;
     m_upSpeed = upSpeed;
     m_downSpeed = downSpeed;
-    addRequirements(m_Arm);
+    addRequirements(m_arm);
   }
 
   // Called when the command is initially scheduled.
   @Override
-  public void initialize() {
-    // Nil I guess
-  }
+  public void initialize() {}
 
   // Called every time the scheduler runs while the command is scheduled.
   @Override
   public void execute() {
     if (m_upSpeed.getAsDouble() >= 0.1 || m_downSpeed.getAsDouble() >= 0.1){
-      m_Arm.disable();
-      m_Arm.setSpeed((m_upSpeed.getAsDouble() - m_downSpeed.getAsDouble()) * 0.6);
-      m_Arm.setAngle(m_Arm.getAngle());
-    } else {
-      m_Arm.enable();
-    }
-    m_Arm.periodic();
+      m_arm.setSpeed((m_upSpeed.getAsDouble() - m_downSpeed.getAsDouble()) * 0.6); // Probably slows down the arm
+      m_arm.setAngle(m_arm.getAngle());
+    } else {}
+    m_arm.periodic();
   }
 
   // Called once the command ends or is interrupted.
   @Override
-  public void end(boolean interrupted) {
-    m_Arm.enable();
-  }
+  public void end(boolean interrupted) {}
 
   // Returns true when the command should end.
   @Override
   public boolean isFinished() {
-    return m_Arm.m_inMotion;
+    return m_arm.m_inMotion;
   }
 }

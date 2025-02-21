@@ -2,66 +2,55 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot.subsystems.Arm;
+package frc.robot.subsystems;
 
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.RelativeEncoder;
-import com.revrobotics.sim.SparkRelativeEncoderSim;
-// import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.config.SparkMaxConfig;
 
-// import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.networktables.GenericEntry;
-// import edu.wpi.first.wpilibj.DriverStation;
-// import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj2.command.ProfiledPIDSubsystem;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.ArmConstants;
 
-public class Arm extends ProfiledPIDSubsystem {
-  private final SparkMax m_armMotor = new SparkMax(ArmConstants.armMotorId, MotorType.kBrushless);
-  private final RelativeEncoder m_encoder;
+public class Arm extends SubsystemBase {
+  private final SparkMax m_armMotorOne = new SparkMax(ArmConstants.armMotorIds[0], MotorType.kBrushless);
+  private final SparkMax m_armMotorTwo = new SparkMax(ArmConstants.armMotorIds[1], MotorType.kBrushless);
+  private final RelativeEncoder m_encoderOne;
+  private final RelativeEncoder m_encoderTwo;
+  SparkMaxConfig m_armConfig = new SparkMaxConfig();
+  SparkMaxConfig m_secondaryArmConfig = new SparkMaxConfig();
 
-  // private final ArmFeedforward m_feedforward = new ArmFeedforward(0, 0, 0, 0);
 
-  private final ShuffleboardTab m_tab = Shuffleboard.getTab("Main");
+  private final ShuffleboardTab m_tab = Shuffleboard.getTab("Arm");
   private final GenericEntry m_angleDisplay;
-  // private final GenericEntry m_voltageDisplay;
 
   public boolean m_inMotion = false;
   private double m_setPoint = 0;
 
-  /** Creates a new ArmProfiled. */
+  /** Creates a new Arm. */
   public Arm() {
-    super(
-        // The ProfiledPIDController used by the subsystem
-        new ProfiledPIDController(
-          2.5,
-          0,
-          0,
-          // The motion profile constraints
-          new TrapezoidProfile.Constraints(120, 90) // 90 90
-        )
-    );
-    // m_encoder = m_armMotor.getAlternateEncoder(8192);
-    m_encoder = m_armMotor.getEncoder();
-    //(m_encoder).setPositionConversionFactor((44.0/12.0 * 125.0)/360.0);
-    m_encoder.setPosition(0);
+    m_encoderOne = m_armMotorOne.getEncoder();
+    m_encoderTwo = m_armMotorTwo.getEncoder();
+    m_encoderOne.setPosition(0);
+    m_encoderTwo.setPosition(0);
+    m_armConfig.inverted(true);
+    m_secondaryArmConfig.inverted(false);
     m_angleDisplay = m_tab.add("Arm Angle", getAngle()).getEntry();
-    // m_voltageDisplay = m_tab.add("Arm Volts", 0).withWidget(BuiltInWidgets.kGraph).getEntry();
-    // m_tab.add("Arm", m_controller);
-    this.setGoal(0);
-    this.enable();
+
+    m_armMotorOne.configure(m_armConfig, null, null);
+    m_armMotorTwo.configure(m_secondaryArmConfig, null, null);
   }
 
-  @Override
   public void useOutput(double output, TrapezoidProfile.State setpoint) {
     // Use the output (and optionally the setpoint) here
-    // m_armMotor.setVoltage(output + m_feedforward.calculate(setpoint.position, setpoint.velocity));
-    m_armMotor.setVoltage(output);
+    m_armMotorOne.setVoltage(output);
+    m_armMotorTwo.setVoltage(output);
   }
 
   /**
@@ -69,7 +58,10 @@ public class Arm extends ProfiledPIDSubsystem {
    * @return Angle of the arm.
    */
   public double getAngle() {
-    return m_encoder.getPosition(); // Returns the angle of the arm.
+    double[] positions = new double[2];
+    positions[0] = m_encoderOne.getPosition();
+    positions[1] = m_encoderTwo.getPosition(); 
+    return positions;
   }
 
   /**
@@ -78,10 +70,8 @@ public class Arm extends ProfiledPIDSubsystem {
    */
   public void setAngle(double angle) {
     m_setPoint = angle;
-    setGoal(angle); // Sets the PID setpoint to the given input.
   }
 
-  @Override
   public double getMeasurement() {
     // Return the process variable measurement here
     return getAngle();
@@ -91,16 +81,14 @@ public class Arm extends ProfiledPIDSubsystem {
    * Method for forcing the arm to move up.
    */
   public void up() {
-    m_armMotor.set(-0.25); // Sets the speed of the motor to -1/4.
-    // m_inControl = true;
+    m_armMotor.set(-0.75); // Sets the speed of the motor to -3/4.
   }
 
   /**
    * Method for forcing the arm to move down.
    */
   public void down() {
-    m_armMotor.set(0.25); // Sets the speed of the motor to 1/4.
-    // m_inControl = true;
+    m_armMotor.set(0.75); // Sets the speed of the motor to 3/4.
   }
 
   public boolean getInMotion() {
@@ -116,16 +104,18 @@ public class Arm extends ProfiledPIDSubsystem {
     m_armMotor.set(speed);
   }
 
+  public void stop(){
+    m_armMotor.set(0);
+  }
+
   @Override
   public void periodic() {
-    super.periodic();
     m_angleDisplay.setDouble(getAngle());
-    // m_voltageDisplay.setDouble(m_armMotor.get() * m_armMotor.getBusVoltage());
     if(getAngle() < -5) { // Checks to see if the arm is past the min limit.
       setAngle(0); // If it is set the PID to 0.
     }
-    if(getAngle() > ArmConstants.rMaxAngle) { // Checks to see if the arm is past the max limit.
-      setAngle(ArmConstants.rMaxAngle); // If is is set the PID to 180.
+    if(getAngle() > ArmConstants.kMaxAngle) { // Checks to see if the arm is past the max limit.
+      setAngle(ArmConstants.kMaxAngle); // If is is set the PID to 180.
     }
     if(getAngle() > m_setPoint - 0.1 && getAngle() < m_setPoint + 0.1) {
       m_inMotion = false;
