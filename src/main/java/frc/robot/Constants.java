@@ -46,11 +46,10 @@ public class Constants {
 
     public class ArmConstants{
         public static final int armMotorId = 14;
-        public static final int[] armMotorIds = {14, 620};
+        public static final int followingArmMotorID = 62; 
 
         public static final double kStowAngle = 0;
         public static final double kMaxAngle = 180; // Change if we need a different max angle
-        public static final double[] kMaxAngles = {180, -180};
 
 
         public static final double kP = 0.15;

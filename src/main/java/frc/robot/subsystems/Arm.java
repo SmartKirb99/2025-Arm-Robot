@@ -12,6 +12,7 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.networktables.GenericEntry;
+import edu.wpi.first.wpilibj.motorcontrol.Spark;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj2.command.ProfiledPIDSubsystem;
@@ -19,15 +20,14 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.ArmConstants;
 
 public class Arm extends SubsystemBase {
-  private final SparkMax m_armMotorOne = new SparkMax(ArmConstants.armMotorIds[0], MotorType.kBrushless);
-  private final SparkMax m_armMotorTwo = new SparkMax(ArmConstants.armMotorIds[1], MotorType.kBrushless);
-  private final RelativeEncoder m_encoderOne;
-  private final RelativeEncoder m_encoderTwo;
+  private final SparkMax m_armMotor = new SparkMax(ArmConstants.armMotorId, MotorType.kBrushless);
+  private final SparkMax m_followingMotor = new SparkMax(ArmConstants.followingArmMotorID, MotorType.kBrushless);
+  private final RelativeEncoder m_encoder;
   SparkMaxConfig m_armConfig = new SparkMaxConfig();
-  SparkMaxConfig m_secondaryArmConfig = new SparkMaxConfig();
+  SparkMaxConfig m_followerConfig = new SparkMaxConfig();
 
 
-  private final ShuffleboardTab m_tab = Shuffleboard.getTab("Arm");
+  private final ShuffleboardTab m_tab = Shuffleboard.getTab("Main");
   private final GenericEntry m_angleDisplay;
 
   public boolean m_inMotion = false;
@@ -35,22 +35,20 @@ public class Arm extends SubsystemBase {
 
   /** Creates a new Arm. */
   public Arm() {
-    m_encoderOne = m_armMotorOne.getEncoder();
-    m_encoderTwo = m_armMotorTwo.getEncoder();
-    m_encoderOne.setPosition(0);
-    m_encoderTwo.setPosition(0);
+    m_encoder = m_armMotor.getEncoder();
+    m_encoder.setPosition(0);
     m_armConfig.inverted(true);
-    m_secondaryArmConfig.inverted(false);
     m_angleDisplay = m_tab.add("Arm Angle", getAngle()).getEntry();
+    m_followerConfig.follow(m_armMotor, true);
 
-    m_armMotorOne.configure(m_armConfig, null, null);
-    m_armMotorTwo.configure(m_secondaryArmConfig, null, null);
+    m_armMotor.configure(m_armConfig, null, null);
+    m_followingMotor.configure(m_followerConfig, null, null);
+    
   }
 
   public void useOutput(double output, TrapezoidProfile.State setpoint) {
     // Use the output (and optionally the setpoint) here
-    m_armMotorOne.setVoltage(output);
-    m_armMotorTwo.setVoltage(output);
+    m_armMotor.setVoltage(output);
   }
 
   /**
@@ -58,10 +56,7 @@ public class Arm extends SubsystemBase {
    * @return Angle of the arm.
    */
   public double getAngle() {
-    double[] positions = new double[2];
-    positions[0] = m_encoderOne.getPosition();
-    positions[1] = m_encoderTwo.getPosition(); 
-    return positions;
+    return m_encoder.getPosition(); // Returns the angle of the arm.
   }
 
   /**
